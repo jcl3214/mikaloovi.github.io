@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>健康魯味 點餐系統</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+  :root {
+    --red:#D62B2B; --red-dark:#A81E1E; --yellow:#F5C518;
+    --bg:#FFF8F0; --text:#1A1A1A; --muted:#999; --border:#EBEBEB;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:130px;}
+
+  /* HEADER */
+  .header{background:var(--red);padding:14px 16px 0;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.2);}
+  .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .shop-name{color:var(--yellow);font-size:21px;font-weight:900;letter-spacing:2px;}
+  .header-right{display:flex;gap:8px;align-items:center;}
+  .cart-btn{background:var(--yellow);border:none;border-radius:50px;padding:8px 14px;font-size:14px;font-weight:700;color:var(--red-dark);cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;}
+  .admin-entry-btn{background:rgba(255,255,255,.2);border:none;border-radius:50px;padding:8px 12px;font-size:13px;font-weight:700;color:white;cursor:pointer;font-family:inherit;}
+  .cart-count{background:var(--red-dark);color:white;border-radius:50%;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:900;}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{flex-shrink:0;background:rgba(255,255,255,.2);color:white;border:none;border-radius:20px;padding:7px 13px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;}
+  .tab.active{background:var(--yellow);color:var(--red-dark);}
+
+  /* SEARCH */
+  .search-bar{padding:12px 16px;}
+  .search-bar input{width:100%;padding:10px 16px;border-radius:50px;border:2px solid var(--border);font-size:15px;font-family:inherit;outline:none;background:white;}
+  .search-bar input:focus{border-color:var(--red);}
+
+  /* MENU */
+  .section-title{background:var(--red);color:var(--yellow);font-size:14px;font-weight:900;padding:8px 16px;letter-spacing:2px;}
+  .item-list{padding:8px 12px;display:flex;flex-direction:column;gap:8px;}
+  .item-card{background:white;border-radius:14px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 5px rgba(0,0,0,.06);border:1.5px solid transparent;transition:border .2s;}
+  .item-card.in-cart{border-color:var(--red);}
+  .item-card.soldout{opacity:.35;pointer-events:none;}
+  .item-info{flex:1;}
+  .item-name{font-size:16px;font-weight:700;}
+  .item-note{font-size:12px;color:var(--muted);margin-top:2px;}
+  .item-price{font-size:16px;font-weight:900;color:var(--red);margin-right:12px;white-space:nowrap;}
+  .soldout-badge{font-size:11px;font-weight:900;color:white;background:#999;border-radius:6px;padding:2px 7px;margin-right:10px;white-space:nowrap;}
+
+  /* COUNTER */
+  .counter{display:flex;align-items:center;gap:8px;}
+  .counter-btn{width:34px;height:34px;border-radius:50%;border:none;font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:transform .1s;}
+  .counter-btn:active{transform:scale(.86);}
+  .btn-minus{background:#F0F0F0;color:var(--text);}
+  .btn-plus{background:var(--red);color:white;}
+  .counter-qty{font-size:16px;font-weight:900;min-width:22px;text-align:center;}
+
+  /* PANELS */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;}
+  .overlay.open{display:block;}
+  .panel{position:fixed;bottom:0;left:0;right:0;background:white;border-radius:24px 24px 0 0;max-height:85vh;overflow-y:auto;z-index:201;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,16px);}
+  .panel.open{transform:translateY(0);}
+  .panel-header{padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:white;z-index:1;}
+  .panel-header h2{font-size:18px;font-weight:900;}
+  .close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:4px;}
+
+  /* CART */
+  .cart-items{padding:4px 20px 8px;}
+  .cart-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+  .cart-item-name{font-size:15px;font-weight:700;}
+  .cart-item-sub{font-size:13px;color:var(--muted);margin-top:3px;}
+  .cart-item-amount{font-size:15px;font-weight:900;color:var(--red);min-width:52px;text-align:right;}
+
+  /* OPTIONS */
+  .order-options{padding:14px 20px 4px;border-top:1px solid var(--border);}
+  .order-options h3{font-size:13px;font-weight:900;margin-bottom:12px;color:var(--muted);letter-spacing:1px;}
+  .option-row{margin-bottom:14px;}
+  .option-label{font-size:13px;color:var(--muted);margin-bottom:7px;font-weight:700;}
+  .option-chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{padding:7px 15px;border-radius:20px;border:1.5px solid var(--border);background:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;color:var(--text);}
+  .chip.selected{background:var(--red);color:white;border-color:var(--red);}
+
+  /* CART FOOTER */
+  .cart-footer{padding:14px 20px 6px;border-top:2px solid var(--border);position:sticky;bottom:0;background:white;}
+  .total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .total-label{font-size:15px;font-weight:700;}
+  .total-amount{font-size:26px;font-weight:900;color:var(--red);}
+  .order-btn{width:100%;background:var(--red);color:white;border:none;border-radius:16px;padding:16px;font-size:17px;font-weight:900;cursor:pointer;font-family:inherit;letter-spacing:1px;}
+  .order-btn:active{background:var(--red-dark);}
+  .order-btn:disabled{background:#CCC;cursor:not-allowed;}
+
+  /* BOTTOM BAR */
+  .bottom-bar{position:fixed;bottom:0;left:0;right:0;background:white;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));box-shadow:0 -2px 14px rgba(0,0,0,.1);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .bar-info{flex:1;}
+  .bar-items{font-size:13px;color:var(--muted);}
+  .bar-total{font-size:22px;font-weight:900;color:var(--red);}
+  .bar-btn{background:var(--red);color:white;border:none;border-radius:14px;padding:14px 22px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .bar-btn:disabled{background:#CCC;cursor:not-allowed;}
+
+  /* SUCCESS MODAL */
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;align-items:flex-end;justify-content:center;}
+  .modal.open{display:flex;}
+  .modal-box{background:white;border-radius:24px 24px 0 0;padding:28px 22px 32px;width:100%;max-height:90vh;overflow-y:auto;}
+  .modal-icon{font-size:46px;text-align:center;margin-bottom:8px;}
+  .modal-box h2{font-size:20px;font-weight:900;text-align:center;margin-bottom:5px;}
+  .modal-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:18px;}
+
+  /* ORDER SUMMARY */
+  .order-summary{background:#FAFAFA;border-radius:14px;padding:18px 16px;margin-bottom:16px;border:1px solid var(--border);}
+  .summary-header{text-align:center;margin-bottom:14px;}
+  .summary-shop-name{font-size:17px;font-weight:900;letter-spacing:2px;}
+  .summary-datetime{font-size:12px;color:var(--muted);margin-top:3px;}
+  .summary-divider{border:none;border-top:1.5px dashed #D0D0D0;margin:12px 0;}
+  .summary-items{display:flex;flex-direction:column;gap:6px;}
+  .summary-row{display:grid;grid-template-columns:1fr auto auto;gap:0 10px;align-items:baseline;font-size:14px;}
+  .s-name{font-weight:700;word-break:break-all;}
+  .s-qty{color:var(--muted);font-size:13px;white-space:nowrap;}
+  .s-amt{font-weight:900;white-space:nowrap;text-align:right;}
+  .summary-total{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:900;}
+  .summary-total-num{font-size:22px;color:var(--red);}
+  .summary-opts-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .opt-tag{font-size:12px;background:#F0F0F0;border-radius:8px;padding:3px 10px;font-weight:700;color:#555;}
+
+  .contact-line{font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px;line-height:2;}
+  .contact-line b{color:var(--text);}
+  .copy-btn{width:100%;background:#1C1C1E;color:white;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;margin-bottom:10px;letter-spacing:1px;}
+  .copy-btn:active{background:#444;}
+  .reset-btn{width:100%;background:var(--red);color:white;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;}
+
+  /* ADMIN */
+  .admin-section-title{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:2px;padding:14px 20px 6px;background:var(--bg);}
+  .admin-item{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:1px solid var(--border);background:white;}
+  .admin-item-name{font-size:15px;font-weight:700;}
+  .admin-item-meta{font-size:13px;color:var(--muted);margin-top:2px;}
+  .admin-item.is-off .admin-item-name{color:#BBB;text-decoration:line-through;}
+  .toggle-wrap{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .toggle-label{font-size:12px;font-weight:700;color:var(--red);}
+  .toggle-label.off-label{color:#BBB;}
+  .toggle-btn{width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;position:relative;transition:background .25s;background:var(--red);}
+  .toggle-btn.off{background:#DDD;}
+  .toggle-btn::after{content:'';position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:white;transition:right .25s,left .25s;}
+  .toggle-btn.off::after{right:auto;left:3px;}
+
+  /* LOGIN */
+  .login-form{padding:28px 22px;}
+  .login-form p{font-size:14px;color:var(--muted);margin-bottom:18px;text-align:center;}
+  .login-form input{width:100%;padding:14px 16px;border-radius:14px;border:2px solid var(--border);font-size:20px;font-family:inherit;outline:none;margin-bottom:12px;text-align:center;letter-spacing:6px;}
+  .login-form input:focus{border-color:var(--red);}
+  .login-btn{width:100%;background:var(--red);color:white;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;}
+  .login-err{color:var(--red);font-size:13px;text-align:center;margin-top:10px;display:none;}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:15px;}
+  .copy-toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#1C1C1E;color:white;border-radius:50px;padding:11px 24px;font-size:14px;font-weight:700;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+  .copy-toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="shop-name">🍢 健康魯味</div>
+    <div class="header-right">
+      <button class="admin-entry-btn" onclick="openAdminLogin()">⚙️ 管理</button>
+      <button class="cart-btn" onclick="openCart()">
+        🛒 購物車<span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<div class="search-bar">
+  <input type="text" id="searchInput" placeholder="🔍 搜尋餐點..." oninput="renderMenu()">
+</div>
+
+<div id="menuContainer"></div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <div class="bar-info">
+    <div class="bar-items" id="barItems">尚未選購</div>
+    <div class="bar-total" id="barTotal">$0</div>
+  </div>
+  <button class="bar-btn" id="barBtn" onclick="openCart()" disabled>查看訂單</button>
+</div>
+
+<!-- CART -->
+<div class="overlay" id="cartOverlay" onclick="closeCart()"></div>
+<div class="panel" id="cartPanel">
+  <div class="panel-header">
+    <h2>🛒 我的訂單</h2>
+    <button class="close-btn" onclick="closeCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+
+  <div class="order-options">
+    <h3>⚙️ 訂餐備註</h3>
+    <div class="option-row">
+      <div class="option-label">🌶️ 辣度</div>
+      <div class="option-chips">
+        <button class="chip selected" onclick="selectOption('spice',this,'不辣')">不辣</button>
+        <button class="chip" onclick="selectOption('spice',this,'小辣')">小辣</button>
+        <button class="chip" onclick="selectOption('spice',this,'中辣')">中辣</button>
+        <button class="chip" onclick="selectOption('spice',this,'大辣')">大辣</button>
+      </div>
+    </div>
+    <div class="option-row">
+      <div class="option-label">🥬 酸菜</div>
+      <div class="option-chips">
+        <button class="chip selected" onclick="selectOption('pickle',this,'正常')">正常</button>
+        <button class="chip" onclick="selectOption('pickle',this,'要酸菜')">要酸菜</button>
+        <button class="chip" onclick="selectOption('pickle',this,'不要酸菜')">不要酸菜</button>
+      </div>
+    </div>
+    <div class="option-row">
+      <div class="option-label">🧂 鹹度/刷醬</div>
+      <div class="option-chips">
+        <button class="chip selected" onclick="selectOption('salt',this,'正常')">正常</button>
+        <button class="chip" onclick="selectOption('salt',this,'清淡')">清淡</button>
+        <button class="chip" onclick="selectOption('salt',this,'重鹹')">重鹹</button>
+      </div>
+    </div>
+    <div class="option-row">
+      <div class="option-label">🎁 來店禮</div>
+      <div class="option-chips">
+        <button class="chip" id="giftChip" onclick="toggleGift(this)">使用本月來店禮</button>
+      </div>
+    </div>
+    <div class="option-row">
+      <div class="option-label">📝 其他備註</div>
+      <textarea id="customNote" placeholder="請輸入其他備註（例如：不加蔥、過敏食材等）"
+        style="width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--border);font-size:14px;font-family:inherit;outline:none;resize:none;height:82px;line-height:1.6;color:var(--text);background:white;"
+        onfocus="this.style.borderColor='var(--red)'"
+        onblur="this.style.borderColor='var(--border)'"></textarea>
+    </div>
+  </div>
+
+  <div class="cart-footer">
+    <div class="total-row">
+      <span class="total-label">總計</span>
+      <span class="total-amount" id="cartTotal">$0</span>
+    </div>
+    <button class="order-btn" id="orderBtn" onclick="submitOrder()" disabled>確認下單</button>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal" id="successModal">
+  <div class="modal-box">
+    <div class="modal-icon">🎉</div>
+    <h2>訂單完成！</h2>
+    <p class="modal-sub">請複製後傳給店家</p>
+    <div class="order-summary" id="orderSummary"></div>
+    <div class="contact-line">
+      📱 Line：<b>@392okuyq</b><br>Google：<b>@mikaloovi</b>
+    </div>
+    <button class="copy-btn" onclick="copyOrder()">📋 複製訂單文字</button>
+    <button class="reset-btn" onclick="closeSuccess()">🔄 重新點餐</button>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="overlay" id="adminOverlay" onclick="closeAdmin()"></div>
+<div class="panel" id="adminPanel">
+  <div class="panel-header">
+    <h2>⚙️ 後台管理</h2>
+    <button class="close-btn" onclick="closeAdmin()">✕</button>
+  </div>
+  <div id="adminContent"></div>
+</div>
+
+<div class="copy-toast" id="copyToast">✅ 已複製到剪貼簿</div>
+
+<script>
+// ══ MENU DATA ════════════════════════════════
+const MENU = [
+  {category:'肉類',emoji:'🥩',items:[
+    {name:'隔間肉',price:55},
+    {name:'豬舌',price:65},
+    {name:'豬肉片',price:50},
+    {name:'豬耳朵',price:45},
+    {name:'大腸',price:40},
+    {name:'粉腸',price:40},
+    {name:'鴨胗/豬皮',price:30},
+  ]},
+  {category:'蔬果/青菜',emoji:'🥦',items:[
+    {name:'玉米筍',price:40},
+    {name:'黑木耳',price:30},
+    {name:'空心菜',price:30},
+    {name:'青花菜',price:30},
+    {name:'大陸妹',price:30},
+    {name:'高麗菜',price:30},
+    {name:'娃娃菜',price:45},
+    {name:'青椒',price:30},
+    {name:'四季豆',price:30},
+    {name:'小黃瓜',price:30},
+    {name:'水蓮',price:30},
+    {name:'白蘿蔔',price:10},
+  ]},
+  {category:'菇類',emoji:'🍄',items:[
+    {name:'香菇',price:30},
+    {name:'杏包菇',price:30},
+    {name:'金針菇',price:30},
+  ]},
+  {category:'麵類',emoji:'🍜',items:[
+    {name:'不倒翁拉麵',price:40},
+    {name:'烏龍麵',price:30},
+    {name:'冬粉',price:25},
+    {name:'粗冬粉',price:25},
+    {name:'意麵',price:25},
+    {name:'關廟麵',price:25},
+    {name:'泡麵',price:15},
+  ]},
+  {category:'豆類',emoji:'🫘',items:[
+    {name:'素雞',price:25},
+    {name:'黑豆干',price:30},
+    {name:'小豆干',price:25,note:'3個'},
+    {name:'百頁豆腐',price:20},
+    {name:'炸豆包',price:20},
+    {name:'花干',price:20},
+    {name:'豆皮',price:15},
+    {name:'小豆皮',price:15},
+  ]},
+  {category:'火鍋料/其他',emoji:'🍡',items:[
+    {name:'手工貢丸',price:25,note:'3個'},
+    {name:'菜捲',price:30},
+    {name:'黑輪片',price:30},
+    {name:'鱈魚燒',price:30},
+    {name:'餛飩',price:30,note:'5個'},
+    {name:'芋籤',price:20},
+    {name:'魚餃',price:25,note:'3個'},
+    {name:'水晶餃',price:15,note:'2個'},
+    {name:'鑫鑫腸',price:20,note:'3個'},
+    {name:'蟹肉棒',price:15,note:'3個'},
+    {name:'甜不辣',price:20,note:'2個'},
+    {name:'小熱狗',price:15,note:'2個'},
+    {name:'竹輪',price:15},
+    {name:'黑輪',price:10,note:'1個'},
+    {name:'海帶',price:10,note:'1個'},
+    {name:'起司魚豆腐',price:10,note:'1個'},
+    {name:'魚包蛋',price:25,note:'2個'},
+    {name:'鳥蛋',price:10,note:'2個'},
+    {name:'小脆丸',price:10},
+    {name:'米血',price:20},
+  ]},
+];
+
+// ══ STATE ════════════════════════════════════
+const ADMIN_PASS = '0000';  // ← 修改密碼
+let soldout = {};
+let cart    = {};
+let opts    = {spice:'不辣', pickle:'正常', salt:'正常', gift:false};
+let activeCategory = '全部';
+let adminUnlocked  = false;
+let lastOrderText  = '';
+
+// ══ TABS ════════════════════════════════════
+function buildTabs() {
+  const cats = ['全部', ...MENU.map(c=>c.category)];
+  document.getElementById('tabs').innerHTML = cats.map(c=>
+    `<button class="tab${c===activeCategory?' active':''}" onclick="setCategory('${c}')">
+      ${MENU.find(m=>m.category===c)?.emoji||'🍢'} ${c}
+    </button>`).join('');
+}
+function setCategory(cat) {
+  activeCategory = cat; buildTabs(); renderMenu();
+}
+
+// ══ MENU ═════════════════════════════════════
+function renderMenu() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const con = document.getElementById('menuContainer');
+  let html = '';
+  MENU.forEach(sec=>{
+    if (activeCategory!=='全部' && sec.category!==activeCategory) return;
+    const list = sec.items.filter(i=>!q||i.name.includes(q));
+    if (!list.length) return;
+    html += `<div class="section-title">${sec.emoji} ${sec.category}</div><div class="item-list">`;
+    list.forEach(item=>{
+      const off = !!soldout[item.name];
+      const qv  = cart[item.name]?.qty||0;
+      const inCart = qv>0;
+      html += `<div class="item-card${inCart?' in-cart':''}${off?' soldout':''}">
+        <div class="item-info">
+          <div class="item-name">${item.name}</div>
+          ${item.note?`<div class="item-note">📝 ${item.note}</div>`:''}
+        </div>
+        ${off
+          ? `<span class="soldout-badge">暫停供應</span>`
+          : `<div class="item-price">$${item.price}</div>`
+        }
+        <div class="counter">
+          <button class="counter-btn btn-minus" onclick="updateQty('${item.name}',${item.price},-1)">−</button>
+          <span class="counter-qty">${qv}</span>
+          <button class="counter-btn btn-plus" onclick="updateQty('${item.name}',${item.price},1)">＋</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  con.innerHTML = html||`<div class="empty">😕 找不到「${q}」的餐點</div>`;
+}
+
+// ══ CART LOGIC ═══════════════════════════════
+function updateQty(name, price, delta) {
+  if (soldout[name]) return;
+  if (!cart[name]) cart[name]={name,price,qty:0};
+  cart[name].qty = Math.max(0, cart[name].qty+delta);
+  if (cart[name].qty===0) delete cart[name];
+  renderMenu(); updateBottomBar(); updateCartCount();
+  if (document.getElementById('cartPanel').classList.contains('open')) renderCartPanel();
+}
+function updateBottomBar(){
+  const items=Object.values(cart);
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+  const count=items.reduce((s,i)=>s+i.qty,0);
+  document.getElementById('barItems').textContent=count>0?`已選 ${count} 項`:'尚未選購';
+  document.getElementById('barTotal').textContent=`$${total}`;
+  document.getElementById('barBtn').disabled=count===0;
+}
+function updateCartCount(){
+  document.getElementById('cartCount').textContent=Object.values(cart).reduce((s,i)=>s+i.qty,0);
+}
+function selectOption(type,el,val){
+  opts[type]=val;
+  el.closest('.option-chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function toggleGift(el){
+  opts.gift=!opts.gift;
+  el.classList.toggle('selected', opts.gift);
+}
+
+// ══ OPEN/CLOSE CART ══════════════════════════
+function openCart(){
+  renderCartPanel();
+  document.getElementById('cartOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('cartPanel').classList.add('open'),10);
+}
+function closeCart(){
+  document.getElementById('cartPanel').classList.remove('open');
+  document.getElementById('cartOverlay').classList.remove('open');
+}
+function renderCartPanel(){
+  const items=Object.values(cart);
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+  document.getElementById('cartItems').innerHTML=items.length
+    ?items.map(item=>`
+      <div class="cart-item">
+        <div style="flex:1">
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-sub">單價 $${item.price} × ${item.qty} 份</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="counter">
+            <button class="counter-btn btn-minus" onclick="updateQty('${item.name}',${item.price},-1)">−</button>
+            <span class="counter-qty">${item.qty}</span>
+            <button class="counter-btn btn-plus" onclick="updateQty('${item.name}',${item.price},1)">＋</button>
+          </div>
+          <div class="cart-item-amount">$${item.price*item.qty}</div>
+        </div>
+      </div>`).join('')
+    :`<div class="empty">🛒 購物車是空的</div>`;
+  document.getElementById('cartTotal').textContent=`$${total}`;
+  document.getElementById('orderBtn').disabled=items.length===0;
+}
+
+// ══ SUBMIT ORDER ═════════════════════════════
+function submitOrder(){
+  const items=Object.values(cart);
+  if(!items.length) return;
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+  const customNote=document.getElementById('customNote').value.trim();
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('zh-TW',{month:'long',day:'numeric'});
+  const timeStr=now.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+
+  // ── HTML SUMMARY ──────────────────────
+  const rowsHtml=items.map(i=>`
+    <div class="summary-row">
+      <span class="s-name">${i.name}</span>
+      <span class="s-qty">×${i.qty}</span>
+      <span class="s-amt">$${i.price*i.qty}</span>
+    </div>`).join('');
+
+  const giftTag = opts.gift ? `<span class="opt-tag">🎁 使用本月來店禮</span>` : '';
+  const noteTag = customNote ? `<div style="margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6;"><b>備註：</b>${customNote}</div>` : '';
+
+  document.getElementById('orderSummary').innerHTML=`
+    <div class="summary-header">
+      <div class="summary-shop-name">🍢 健康魯味</div>
+      <div class="summary-datetime">${dateStr}　${timeStr}</div>
+    </div>
+    <hr class="summary-divider">
+    <div class="summary-items">${rowsHtml}</div>
+    <hr class="summary-divider">
+    <div class="summary-total">
+      <span>合　計</span>
+      <span class="summary-total-num">$${total}</span>
+    </div>
+    <hr class="summary-divider">
+    <div class="summary-opts-row">
+      <span class="opt-tag">🌶️ ${opts.spice}</span>
+      <span class="opt-tag">🥬 ${opts.pickle}</span>
+      <span class="opt-tag">🧂 ${opts.salt}</span>
+      ${giftTag}
+    </div>
+    ${noteTag}`;
+
+  // ── PLAIN TEXT (for copy) ─────────────
+  const maxLen=Math.max(...items.map(i=>[...i.name].length));
+  const pad=(s,n)=>{const l=[...s].length;return s+' '.repeat(Math.max(0,n-l));};
+  const itemLines=items.map(i=>
+    `${pad(i.name,maxLen)}  ×${String(i.qty).padStart(2)}  $${String(i.price*i.qty).padStart(4)}`
+  ).join('\n');
+  const sep='─'.repeat(maxLen+12);
+
+  lastOrderText=
+`🍢 健康魯味
+${dateStr} ${timeStr}
+${sep}
+${itemLines}
+${sep}
+合計：$${total}
+${sep}
+🌶️ 辣度：${opts.spice}
+🥬 酸菜：${opts.pickle}
+🧂 鹹度：${opts.salt}${opts.gift?'\n🎁 使用本月來店禮':''}${customNote?'\n📝 備註：'+customNote:''}`;
+
+  closeCart();
+  document.getElementById('successModal').classList.add('open');
+}
+
+function copyOrder(){
+  const doToast=()=>{
+    const t=document.getElementById('copyToast');
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),2200);
+  };
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(lastOrderText).then(doToast).catch(fallbackCopy);
+  } else { fallbackCopy(); }
+  function fallbackCopy(){
+    const ta=document.createElement('textarea');
+    ta.value=lastOrderText;
+    ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    try{document.execCommand('copy');}catch(e){}
+    ta.remove();doToast();
+  }
+}
+
+function closeSuccess(){
+  cart={};
+  opts.gift=false;
+  const gc=document.getElementById('giftChip');
+  if(gc) gc.classList.remove('selected');
+  const cn=document.getElementById('customNote');
+  if(cn) cn.value='';
+  document.getElementById('successModal').classList.remove('open');
+  updateBottomBar();updateCartCount();renderMenu();
+}
+
+// ══ ADMIN ════════════════════════════════════
+function openAdminLogin(){
+  if(adminUnlocked){openAdmin();return;}
+  document.getElementById('adminContent').innerHTML=`
+    <div class="login-form">
+      <p>請輸入管理密碼</p>
+      <input type="password" id="pwInput" placeholder="••••" maxlength="10"
+        onkeydown="if(event.key==='Enter')checkPass()">
+      <button class="login-btn" onclick="checkPass()">進入後台</button>
+      <div class="login-err" id="loginErr">密碼錯誤，請再試一次</div>
+    </div>`;
+  openAdminPanel();
+  setTimeout(()=>document.getElementById('pwInput')?.focus(),380);
+}
+function checkPass(){
+  const v=document.getElementById('pwInput')?.value;
+  if(v===ADMIN_PASS){adminUnlocked=true;openAdmin();}
+  else{
+    document.getElementById('loginErr').style.display='block';
+    document.getElementById('pwInput').value='';
+  }
+}
+function openAdmin(){
+  let html='';
+  MENU.forEach(sec=>{
+    html+=`<div class="admin-section-title">${sec.emoji} ${sec.category}</div>`;
+    sec.items.forEach(item=>{
+      const off=!!soldout[item.name];
+      html+=`<div class="admin-item${off?' is-off':''}" id="adm-${CSS.escape(item.name)}">
+        <div>
+          <div class="admin-item-name">${item.name}</div>
+          <div class="admin-item-meta">$${item.price}${item.note?' · '+item.note:''}</div>
+        </div>
+        <div class="toggle-wrap">
+          <span class="toggle-label${off?' off-label':''}" id="lbl-${CSS.escape(item.name)}">${off?'下架':'供應中'}</span>
+          <button class="toggle-btn${off?' off':''}" id="tog-${CSS.escape(item.name)}"
+            onclick="toggleItem('${item.name}')"></button>
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('adminContent').innerHTML=html;
+  openAdminPanel();
+}
+function openAdminPanel(){
+  document.getElementById('adminOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('adminPanel').classList.add('open'),10);
+}
+function toggleItem(name){
+  soldout[name]=!soldout[name];
+  const off=soldout[name];
+  if(off&&cart[name]){delete cart[name];updateBottomBar();updateCartCount();}
+  // Update admin row
+  const esc=CSS.escape(name);
+  document.getElementById(`adm-${esc}`)?.classList.toggle('is-off',off);
+  const tog=document.getElementById(`tog-${esc}`);
+  if(tog) tog.classList.toggle('off',off);
+  const lbl=document.getElementById(`lbl-${esc}`);
+  if(lbl){lbl.textContent=off?'下架':'供應中';lbl.classList.toggle('off-label',off);}
+  renderMenu();
+}
+function closeAdmin(){
+  document.getElementById('adminPanel').classList.remove('open');
+  document.getElementById('adminOverlay').classList.remove('open');
+}
+
+// ══ INIT ═════════════════════════════════════
+buildTabs();renderMenu();updateBottomBar();
+</script>
+</body>
+</html>
