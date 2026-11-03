@@ -344,7 +344,12 @@ const MENU = [
 
 // ══ STATE ════════════════════════════════════
 const ADMIN_PASS = '0000';  // ← 修改密碼
-let soldout = {};
+let soldout = {};  // 當日臨時售完（僅此瀏覽器、重新整理即重置）
+// 正式下架：在 MENU 品項加 available:false（省略＝供應中）
+const ITEM_INDEX = {};
+MENU.forEach(sec=>sec.items.forEach(i=>{ ITEM_INDEX[i.name]=i; }));
+function isListedOff(name){ return ITEM_INDEX[name]?.available===false; }
+function isOff(name){ return isListedOff(name) || !!soldout[name]; }
 let cart    = {};
 let opts    = {spice:'不辣', pickle:'正常', salt:'正常', gift:false};
 let activeCategory = '全部';
@@ -374,7 +379,7 @@ function renderMenu() {
     if (!list.length) return;
     html += `<div class="section-title">${sec.emoji} ${sec.category}</div><div class="item-list">`;
     list.forEach(item=>{
-      const off = !!soldout[item.name];
+      const off = isOff(item.name);
       const qv  = cart[item.name]?.qty||0;
       const inCart = qv>0;
       html += `<div class="item-card${inCart?' in-cart':''}${off?' soldout':''}">
@@ -383,7 +388,7 @@ function renderMenu() {
           ${item.note?`<div class="item-note">📝 ${item.note}</div>`:''}
         </div>
         ${off
-          ? `<span class="soldout-badge">暫停供應</span>`
+          ? `<span class="soldout-badge">售完</span>`
           : `<div class="item-price">$${item.price}</div>`
         }
         <div class="counter">
@@ -400,7 +405,7 @@ function renderMenu() {
 
 // ══ CART LOGIC ═══════════════════════════════
 function updateQty(name, price, delta) {
-  if (soldout[name]) return;
+  if (isOff(name)) return;
   if (!cart[name]) cart[name]={name,price,qty:0};
   cart[name].qty = Math.max(0, cart[name].qty+delta);
   if (cart[name].qty===0) delete cart[name];
@@ -585,16 +590,17 @@ function openAdmin(){
   MENU.forEach(sec=>{
     html+=`<div class="admin-section-title">${sec.emoji} ${sec.category}</div>`;
     sec.items.forEach(item=>{
-      const off=!!soldout[item.name];
+      const listed=isListedOff(item.name);
+      const off=listed||!!soldout[item.name];
       html+=`<div class="admin-item${off?' is-off':''}" id="adm-${CSS.escape(item.name)}">
         <div>
           <div class="admin-item-name">${item.name}</div>
           <div class="admin-item-meta">$${item.price}${item.note?' · '+item.note:''}</div>
         </div>
         <div class="toggle-wrap">
-          <span class="toggle-label${off?' off-label':''}" id="lbl-${CSS.escape(item.name)}">${off?'下架':'供應中'}</span>
-          <button class="toggle-btn${off?' off':''}" id="tog-${CSS.escape(item.name)}"
-            onclick="toggleItem('${item.name}')"></button>
+          <span class="toggle-label${off?' off-label':''}" id="lbl-${CSS.escape(item.name)}">${listed?'已下架（需改程式）':off?'今日售完':'供應中'}</span>
+          ${listed?'':`<button class="toggle-btn${off?' off':''}" id="tog-${CSS.escape(item.name)}"
+            onclick="toggleItem('${item.name}')"></button>`}
         </div>
       </div>`;
     });
@@ -607,6 +613,7 @@ function openAdminPanel(){
   setTimeout(()=>document.getElementById('adminPanel').classList.add('open'),10);
 }
 function toggleItem(name){
+  if(isListedOff(name)) return;
   soldout[name]=!soldout[name];
   const off=soldout[name];
   if(off&&cart[name]){delete cart[name];updateBottomBar();updateCartCount();}
@@ -616,7 +623,7 @@ function toggleItem(name){
   const tog=document.getElementById(`tog-${esc}`);
   if(tog) tog.classList.toggle('off',off);
   const lbl=document.getElementById(`lbl-${esc}`);
-  if(lbl){lbl.textContent=off?'下架':'供應中';lbl.classList.toggle('off-label',off);}
+  if(lbl){lbl.textContent=off?'今日售完':'供應中';lbl.classList.toggle('off-label',off);}
   renderMenu();
 }
 function closeAdmin(){
