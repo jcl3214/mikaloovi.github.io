@@ -204,8 +204,7 @@
     <div class="option-row">
       <div class="option-label">🥬 酸菜</div>
       <div class="option-chips">
-        <button class="chip selected" onclick="selectOption('pickle',this,'正常')">正常</button>
-        <button class="chip" onclick="selectOption('pickle',this,'要酸菜')">要酸菜</button>
+        <button class="chip selected" onclick="selectOption('pickle',this,'要酸菜')">要酸菜</button>
         <button class="chip" onclick="selectOption('pickle',this,'不要酸菜')">不要酸菜</button>
       </div>
     </div>
@@ -351,7 +350,7 @@ MENU.forEach(sec=>sec.items.forEach(i=>{ ITEM_INDEX[i.name]=i; }));
 function isListedOff(name){ return ITEM_INDEX[name]?.available===false; }
 function isOff(name){ return isListedOff(name) || !!soldout[name]; }
 let cart    = {};
-let opts    = {spice:'不辣', pickle:'正常', salt:'正常', gift:false};
+let opts    = {spice:'不辣', pickle:'要酸菜', salt:'正常', gift:false};
 let activeCategory = '全部';
 let adminUnlocked  = false;
 let lastOrderText  = '';
